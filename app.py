@@ -204,7 +204,11 @@ def view_ticket(ticket_id):
                 ticket.status == 'Pending Approval' and 
                 not any(a.status == 'Approved' for a in approvals))
     
-    ai_classified = any('AI' in h.details or 'OpenAI' in h.details for h in history if h.action == 'Ticket Created')
+    classification_history = [h for h in history if h.action in ['Ticket Created', 'Ticket Edited'] and h.details and 'using' in h.details]
+    ai_classified = False
+    if classification_history:
+        latest_classification = classification_history[0]
+        ai_classified = 'AI' in latest_classification.details or 'OpenAI' in latest_classification.details
     
     test_mode_urls = []
     email_configured = os.getenv('MAIL_USERNAME')
