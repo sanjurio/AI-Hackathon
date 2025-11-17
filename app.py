@@ -150,28 +150,37 @@ def create_ticket():
             category_name = category.name if category else 'Uncategorized'
             creator_name = current_user.name
             
-            approvers = category.approvers.split(',')
+            approvers_data = category.approvers.split('|')
             approval_ids = []
-            for approver_email in approvers:
+            for idx, approver_info in enumerate(approvers_data, start=1):
+                parts = approver_info.strip().split(':')
+                approver_email = parts[0].strip()
+                approver_role = parts[1].strip() if len(parts) > 1 else 'Approver'
+                approver_name = parts[2].strip() if len(parts) > 2 else ''
+                
                 approval = Approval(
                     ticket_id=ticket_id,
-                    approver_email=approver_email.strip(),
-                    status='Pending'
+                    approver_email=approver_email,
+                    approver_name=approver_name,
+                    approver_role=approver_role,
+                    approval_level=idx,
+                    status='Pending' if idx == 1 else 'Waiting'
                 )
                 db.session.add(approval)
-                approval_ids.append((approver_email.strip(), approval))
+                approval_ids.append((approver_email, approver_role, approver_name, approval, idx))
             db.session.commit()
             
-            for approver_email, approval in approval_ids:
-                token = serializer.dumps({'approval_id': approval.id, 'ticket_id': ticket_id}, salt='approval-token')
-                send_approval_email(
-                    ticket_id=ticket_id,
-                    description=description,
-                    category_name=category_name,
-                    creator_name=creator_name,
-                    approval_token=token,
-                    approver_email=approver_email
-                )
+            for approver_email, approver_role, approver_name, approval, idx in approval_ids:
+                if idx == 1:
+                    token = serializer.dumps({'approval_id': approval.id, 'ticket_id': ticket_id}, salt='approval-token')
+                    send_approval_email(
+                        ticket_id=ticket_id,
+                        description=description,
+                        category_name=category_name,
+                        creator_name=creator_name,
+                        approval_token=token,
+                        approver_email=approver_email
+                    )
         
         flash('Ticket created successfully! Waiting for approval.', 'success')
         return redirect(url_for('user_dashboard'))
@@ -188,9 +197,121 @@ def view_ticket(ticket_id):
         return redirect(url_for('user_dashboard'))
     
     history = TicketHistory.query.filter_by(ticket_id=ticket_id).order_by(TicketHistory.timestamp.desc()).all()
-    approvals = Approval.query.filter_by(ticket_id=ticket_id).all()
+    approvals = Approval.query.filter_by(ticket_id=ticket_id).order_by(Approval.approval_level).all()
     
-    return render_template('view_ticket.html', ticket=ticket, history=history, approvals=approvals)
+    can_edit = (ticket.created_by == current_user.id and 
+                ticket.status == 'Pending Approval' and 
+                not any(a.status == 'Approved' for a in approvals))
+    
+    return render_template('view_ticket.html', ticket=ticket, history=history, approvals=approvals, can_edit=can_edit)
+
+@app.route('/user/ticket/<int:ticket_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_ticket(ticket_id):
+    ticket = Ticket.query.get_or_404(ticket_id)
+    
+    if ticket.created_by != current_user.id:
+        flash('You do not have permission to edit this ticket.', 'danger')
+        return redirect(url_for('user_dashboard'))
+    
+    approvals = Approval.query.filter_by(ticket_id=ticket_id).all()
+    if ticket.status != 'Pending Approval' or any(a.status == 'Approved' for a in approvals):
+        flash('Cannot edit ticket after approvals have started.', 'danger')
+        return redirect(url_for('view_ticket', ticket_id=ticket_id))
+    
+    if request.method == 'POST':
+        new_description = request.form.get('description')
+        
+        if not new_description or len(new_description) < 10:
+            flash('Please provide a detailed description (at least 10 characters).', 'danger')
+            return redirect(url_for('edit_ticket', ticket_id=ticket_id))
+        
+        old_description = ticket.description
+        ticket.description = new_description
+        
+        category = classify_ticket(new_description)
+        old_category = ticket.category
+        ticket.category_id = category.id if category else None
+        
+        history = TicketHistory(
+            ticket_id=ticket.id,
+            action='Ticket Edited',
+            details=f'Description updated. Category changed from {old_category.name if old_category else "None"} to {category.name if category else "None"}'
+        )
+        db.session.add(history)
+        
+        Approval.query.filter_by(ticket_id=ticket_id).delete()
+        
+        if category and category.approvers:
+            approvers_data = category.approvers.split('|')
+            approval_list = []
+            for idx, approver_info in enumerate(approvers_data, start=1):
+                parts = approver_info.strip().split(':')
+                approver_email = parts[0].strip()
+                approver_role = parts[1].strip() if len(parts) > 1 else 'Approver'
+                approver_name = parts[2].strip() if len(parts) > 2 else ''
+                
+                approval = Approval(
+                    ticket_id=ticket_id,
+                    approver_email=approver_email,
+                    approver_name=approver_name,
+                    approver_role=approver_role,
+                    approval_level=idx,
+                    status='Pending' if idx == 1 else 'Waiting'
+                )
+                db.session.add(approval)
+                approval_list.append((approver_email, approval, idx))
+            
+            db.session.commit()
+            
+            for approver_email, approval, idx in approval_list:
+                if idx == 1:
+                    token = serializer.dumps({'approval_id': approval.id, 'ticket_id': ticket_id}, salt='approval-token')
+                    send_approval_email(
+                        ticket_id=ticket_id,
+                        description=new_description,
+                        category_name=category.name,
+                        creator_name=current_user.name,
+                        approval_token=token,
+                        approver_email=approver_email
+                    )
+        else:
+            db.session.commit()
+        flash('Ticket updated successfully!', 'success')
+        return redirect(url_for('view_ticket', ticket_id=ticket_id))
+    
+    return render_template('create_ticket.html', ticket=ticket, is_edit=True)
+
+@app.route('/user/ticket/<int:ticket_id>/cancel', methods=['POST'])
+@login_required
+def cancel_ticket(ticket_id):
+    ticket = Ticket.query.get_or_404(ticket_id)
+    
+    if ticket.created_by != current_user.id:
+        flash('You do not have permission to cancel this ticket.', 'danger')
+        return redirect(url_for('user_dashboard'))
+    
+    approvals = Approval.query.filter_by(ticket_id=ticket_id).all()
+    if ticket.status != 'Pending Approval' or any(a.status == 'Approved' for a in approvals):
+        flash('Cannot cancel ticket after approvals have started.', 'danger')
+        return redirect(url_for('view_ticket', ticket_id=ticket_id))
+    
+    ticket.status = 'Cancelled'
+    
+    for approval in approvals:
+        if approval.status in ['Pending', 'Waiting']:
+            approval.status = 'Cancelled'
+    
+    history = TicketHistory(
+        ticket_id=ticket_id,
+        action='Ticket Cancelled',
+        details=f'Ticket cancelled by {current_user.name} before any approvals'
+    )
+    db.session.add(history)
+    db.session.commit()
+    
+    flash('Ticket cancelled successfully.', 'info')
+    return redirect(url_for('user_dashboard'))
 
 @app.route('/admin/dashboard')
 @login_required
@@ -335,23 +456,60 @@ def approve_ticket(token, action):
                              message='Invalid approval link. This approval does not belong to this ticket.',
                              ticket=None), 400
     
+    if approval.status == 'Waiting':
+        return render_template('approval_result.html',
+                             message='This approval is not ready yet. A previous level must approve first.',
+                             ticket=ticket), 400
+    
     if approval.status != 'Pending':
         return render_template('approval_result.html',
                              message=f'This approval has already been {approval.status.lower()}.',
                              ticket=ticket)
     
+    previous_level = approval.approval_level - 1
+    if previous_level > 0:
+        prev_approval = Approval.query.filter_by(
+            ticket_id=ticket_id, 
+            approval_level=previous_level
+        ).first()
+        if prev_approval and prev_approval.status != 'Approved':
+            return render_template('approval_result.html',
+                                 message=f'Cannot approve at Level {approval.approval_level}. Previous level must approve first.',
+                                 ticket=ticket), 400
+    
     if action == 'approve':
         approval.status = 'Approved'
         approval.approved_at = datetime.utcnow()
         
+        role_info = f" ({approval.approver_role})" if approval.approver_role else ""
+        name_info = approval.approver_name if approval.approver_name else approval.approver_email
+        
         history = TicketHistory(
             ticket_id=ticket_id,
             action='Approval Received',
-            details=f'Approved by {approval.approver_email}'
+            details=f'Level {approval.approval_level} approved by {name_info}{role_info}'
         )
         db.session.add(history)
         
-        all_approvals = Approval.query.filter_by(ticket_id=ticket_id).all()
+        all_approvals = Approval.query.filter_by(ticket_id=ticket_id).order_by(Approval.approval_level).all()
+        
+        next_level = approval.approval_level + 1
+        next_approval = Approval.query.filter_by(ticket_id=ticket_id, approval_level=next_level).first()
+        
+        if next_approval and next_approval.status == 'Waiting':
+            next_approval.status = 'Pending'
+            db.session.commit()
+            
+            token = serializer.dumps({'approval_id': next_approval.id, 'ticket_id': ticket_id}, salt='approval-token')
+            send_approval_email(
+                ticket_id=ticket_id,
+                description=ticket.description,
+                category_name=ticket.category.name if ticket.category else 'Uncategorized',
+                creator_name=ticket.creator.name,
+                approval_token=token,
+                approver_email=next_approval.approver_email
+            )
+        
         if all(a.status == 'Approved' for a in all_approvals):
             ticket.status = 'Approved'
             
@@ -378,7 +536,7 @@ def approve_ticket(token, action):
                 )
         
         db.session.commit()
-        message = 'Ticket approved successfully!'
+        message = f'Ticket approved successfully at Level {approval.approval_level}!'
     
     elif action == 'reject':
         approval.status = 'Rejected'

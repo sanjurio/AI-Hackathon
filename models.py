@@ -75,12 +75,16 @@ class Approval(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id'), nullable=False)
     approver_email = db.Column(db.String(120), nullable=False)
+    approver_name = db.Column(db.String(100))
+    approver_role = db.Column(db.String(100))
+    approval_level = db.Column(db.Integer, default=1)
     status = db.Column(db.String(20), default='Pending')
     approved_at = db.Column(db.DateTime)
+    comments = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def __repr__(self):
-        return f'<Approval {self.id} - {self.status}>'
+        return f'<Approval {self.id} - Level {self.approval_level} - {self.status}>'
 
 class TicketHistory(db.Model):
     __tablename__ = 'ticket_history'

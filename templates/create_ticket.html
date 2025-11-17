@@ -1,32 +1,48 @@
 {% extends "base.html" %}
 
-{% block title %}Create Ticket{% endblock %}
+{% block title %}{% if is_edit %}Edit Ticket{% else %}Create Ticket{% endif %}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8">
         <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0"><i class="bi bi-plus-circle"></i> Create New Ticket</h4>
+            <div class="card-header {% if is_edit %}bg-warning{% else %}bg-primary{% endif %} text-white">
+                <h4 class="mb-0">
+                    {% if is_edit %}
+                    <i class="bi bi-pencil"></i> Edit Ticket #{{ ticket.id }}
+                    {% else %}
+                    <i class="bi bi-plus-circle"></i> Create New Ticket
+                    {% endif %}
+                </h4>
             </div>
             <div class="card-body">
+                {% if is_edit %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i> <strong>Editing Ticket:</strong> If you change the description significantly, the category may be re-classified and approvers may change.
+                </div>
+                {% else %}
                 <div class="alert alert-info">
                     <i class="bi bi-robot"></i> <strong>AI-Powered Classification:</strong> Just describe your request in detail, and our AI will automatically categorize it and route it to the right team!
                 </div>
+                {% endif %}
                 
                 <form method="POST">
                     <div class="mb-3">
                         <label for="description" class="form-label">Describe Your Request</label>
-                        <textarea class="form-control" id="description" name="description" rows="6" required minlength="10" placeholder="Example: I need to install Microsoft Teams on my laptop for client meetings. My laptop model is Dell Latitude 5420 running Windows 11 Pro."></textarea>
+                        <textarea class="form-control" id="description" name="description" rows="6" required minlength="10" placeholder="Example: I need to install Microsoft Teams on my laptop for client meetings. My laptop model is Dell Latitude 5420 running Windows 11 Pro.">{% if is_edit %}{{ ticket.description }}{% endif %}</textarea>
                         <small class="text-muted">Please provide as much detail as possible (minimum 10 characters)</small>
                     </div>
                     
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{{ url_for('user_dashboard') }}" class="btn btn-secondary">
+                        <a href="{% if is_edit %}{{ url_for('view_ticket', ticket_id=ticket.id) }}{% else %}{{ url_for('user_dashboard') }}{% endif %}" class="btn btn-secondary">
                             <i class="bi bi-x-circle"></i> Cancel
                         </a>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn {% if is_edit %}btn-warning{% else %}btn-primary{% endif %}">
+                            {% if is_edit %}
+                            <i class="bi bi-save"></i> Update Ticket
+                            {% else %}
                             <i class="bi bi-send"></i> Submit Ticket
+                            {% endif %}
                         </button>
                     </div>
                 </form>
