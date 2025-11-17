@@ -6,6 +6,15 @@ An intelligent ticketing system that automatically classifies and assigns suppor
 
 ## Recent Changes
 
+**November 17, 2025 - Phase 3: AI Integration and Admin Improvements**
+- Integrated OpenAI API for intelligent ticket classification using GPT-3.5-turbo
+- Added AI classification status badges (shows "AI Classified" vs "Keyword Classified")
+- Created test mode for approvals - displays approval URLs when email is not configured
+- Enhanced category management UI to support hierarchical approver configuration
+- Updated approval hierarchy format: email:Role:Name | email:Role:Name
+- Fixed AI classification tracking to reflect most recent classification (including edits)
+- Improved admin experience with better approver hierarchy visualization
+
 **November 17, 2025 - Phase 2: Multi-Layer Hierarchical Approval System**
 - Enhanced approval model to support multi-layer hierarchical approval with levels, roles, and names
 - Implemented sequential approval workflow (Level 1 → Level 2 → Level 3 → Level 4)
