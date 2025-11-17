@@ -56,6 +56,11 @@
                     <strong>Category:</strong>
                     {% if ticket.category %}
                     <span class="badge bg-info">{{ ticket.category.name }}</span>
+                    {% if ai_classified %}
+                    <span class="badge bg-success ms-2"><i class="bi bi-cpu"></i> AI Classified</span>
+                    {% else %}
+                    <span class="badge bg-secondary ms-2"><i class="bi bi-key"></i> Keyword Classified</span>
+                    {% endif %}
                     {% else %}
                     <span class="badge bg-secondary">Uncategorized</span>
                     {% endif %}
@@ -105,6 +110,20 @@
                 <div class="alert alert-secondary mb-3">
                     <i class="bi bi-info-circle"></i> This ticket requires sequential approval from multiple levels. Each level must approve before the next level is notified.
                 </div>
+                
+                {% if test_mode_urls %}
+                <div class="alert alert-warning">
+                    <h6><i class="bi bi-wrench"></i> Test Mode - Approval URLs</h6>
+                    <p class="small mb-2">Email service is not configured. Use these URLs to test approvals:</p>
+                    {% for url_info in test_mode_urls %}
+                    <div class="mb-2">
+                        <strong>Level {{ url_info.level }} ({{ url_info.role }}):</strong><br>
+                        <a href="{{ url_info.approve_url }}" class="btn btn-sm btn-success me-2" target="_blank">Approve</a>
+                        <a href="{{ url_info.reject_url }}" class="btn btn-sm btn-danger" target="_blank">Reject</a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead>

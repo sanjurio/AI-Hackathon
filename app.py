@@ -125,7 +125,7 @@ def create_ticket():
             flash('Please provide a detailed description (at least 10 characters).', 'danger')
             return redirect(url_for('create_ticket'))
         
-        category = classify_ticket(description)
+        category, ai_used = classify_ticket(description)
         
         ticket = Ticket(
             description=description,
@@ -136,10 +136,11 @@ def create_ticket():
         db.session.add(ticket)
         db.session.commit()
         
+        classification_method = 'AI (OpenAI)' if ai_used else 'Keyword matching'
         history = TicketHistory(
             ticket_id=ticket.id,
             action='Ticket Created',
-            details=f'Category auto-classified as: {category.name if category else "Uncategorized"}'
+            details=f'Category auto-classified as: {category.name if category else "Uncategorized"} using {classification_method}'
         )
         db.session.add(history)
         db.session.commit()
@@ -203,7 +204,27 @@ def view_ticket(ticket_id):
                 ticket.status == 'Pending Approval' and 
                 not any(a.status == 'Approved' for a in approvals))
     
-    return render_template('view_ticket.html', ticket=ticket, history=history, approvals=approvals, can_edit=can_edit)
+    ai_classified = any('AI' in h.details or 'OpenAI' in h.details for h in history if h.action == 'Ticket Created')
+    
+    test_mode_urls = []
+    email_configured = os.getenv('MAIL_USERNAME')
+    if not email_configured and approvals:
+        for approval in approvals:
+            token = serializer.dumps({'approval_id': approval.id, 'ticket_id': ticket_id}, salt='approval-token')
+            test_mode_urls.append({
+                'level': approval.approval_level,
+                'role': approval.approver_role or 'Approver',
+                'approve_url': url_for('approve_ticket', token=token, action='approve', _external=True),
+                'reject_url': url_for('approve_ticket', token=token, action='reject', _external=True)
+            })
+    
+    return render_template('view_ticket.html', 
+                         ticket=ticket, 
+                         history=history, 
+                         approvals=approvals, 
+                         can_edit=can_edit,
+                         ai_classified=ai_classified,
+                         test_mode_urls=test_mode_urls)
 
 @app.route('/user/ticket/<int:ticket_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -229,14 +250,15 @@ def edit_ticket(ticket_id):
         old_description = ticket.description
         ticket.description = new_description
         
-        category = classify_ticket(new_description)
+        category, ai_used = classify_ticket(new_description)
         old_category = ticket.category
         ticket.category_id = category.id if category else None
         
+        classification_method = 'AI (OpenAI)' if ai_used else 'Keyword matching'
         history = TicketHistory(
             ticket_id=ticket.id,
             action='Ticket Edited',
-            details=f'Description updated. Category changed from {old_category.name if old_category else "None"} to {category.name if category else "None"}'
+            details=f'Description updated. Category changed from {old_category.name if old_category else "None"} to {category.name if category else "None"} using {classification_method}'
         )
         db.session.add(history)
         

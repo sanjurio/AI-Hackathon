@@ -99,6 +99,7 @@ def classify_ticket(description):
     if client:
         result = classify_ticket_with_openai(description)
         if result:
-            return result
+            return result, True
     
-    return classify_ticket_with_keywords(description)
+    result = classify_ticket_with_keywords(description)
+    return result, False

@@ -27,9 +27,13 @@
                         <small class="text-muted">Comma-separated keywords for AI classification</small>
                     </div>
                     <div class="mb-3">
-                        <label for="approvers" class="form-label">Approvers (Email)</label>
-                        <input type="text" class="form-control" id="approvers" name="approvers" placeholder="manager@company.com, director@company.com">
-                        <small class="text-muted">Comma-separated email addresses</small>
+                        <label for="approvers" class="form-label">Approval Hierarchy</label>
+                        <textarea class="form-control" id="approvers" name="approvers" rows="4" placeholder="email@company.com:Role:Full Name | email2@company.com:Role 2:Full Name 2"></textarea>
+                        <small class="text-muted">
+                            <strong>Format:</strong> email:Role:Name | email:Role:Name<br>
+                            <strong>Example:</strong> team.lead@company.com:Team Lead:Robert Johnson | it.manager@company.com:IT Manager:Emily Davis<br>
+                            Each approver separated by | represents a level in the hierarchy
+                        </small>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-plus-circle"></i> Create Category
@@ -70,7 +74,20 @@
                                 </td>
                                 <td>
                                     {% if category.approvers %}
-                                    <small class="text-muted">{{ category.approvers[:30] }}{% if category.approvers|length > 30 %}...{% endif %}</small>
+                                    {% set approver_levels = category.approvers.split('|') %}
+                                    <small class="text-muted">
+                                        {{ approver_levels|length }} level(s)
+                                        {% if approver_levels|length > 0 %}
+                                        <br>
+                                        {% for approver in approver_levels[:2] %}
+                                        {% set parts = approver.strip().split(':') %}
+                                        Level {{ loop.index }}: {{ parts[1] if parts|length > 1 else 'Approver' }}<br>
+                                        {% endfor %}
+                                        {% if approver_levels|length > 2 %}
+                                        <em>+{{ approver_levels|length - 2 }} more...</em>
+                                        {% endif %}
+                                        {% endif %}
+                                    </small>
                                     {% else %}
                                     -
                                     {% endif %}
