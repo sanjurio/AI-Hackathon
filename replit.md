@@ -6,12 +6,22 @@ An intelligent ticketing system that automatically classifies and assigns suppor
 
 ## Recent Changes
 
-**November 17, 2025**
+**November 17, 2025 - Phase 2: Multi-Layer Hierarchical Approval System**
+- Enhanced approval model to support multi-layer hierarchical approval with levels, roles, and names
+- Implemented sequential approval workflow (Level 1 → Level 2 → Level 3 → Level 4)
+- Added edit ticket functionality (only allowed before approvals start)
+- Added cancel ticket functionality (only allowed before approvals start)
+- Enforced level-order approval (prevents out-of-order approvals)
+- Updated UI to display hierarchical approval status with badges and detailed information
+- Created comprehensive seed data script with realistic corporate approval hierarchies
+- Fixed all critical issues identified in code review
+
+**November 17, 2025 - Phase 1: Initial Setup**
 - Initial project setup with complete AI ticketing system
 - Implemented dual database support (PostgreSQL for Replit, SQLite for localhost)
 - Created AI-powered ticket classification with OpenAI and fallback to native Python
 - Built smart workload distribution algorithm for ticket assignment
-- Implemented multi-level email approval workflow
+- Implemented email approval workflow
 - Created admin and user dashboards with modern Bootstrap UI
 - Added comprehensive localhost deployment guide
 
@@ -39,11 +49,11 @@ Flask Application (app.py)
 
 ### Database Models
 - **Users**: Authentication, admin roles, password management
-- **Categories**: Ticket categories with keywords and approvers
+- **Categories**: Ticket categories with keywords and hierarchical approvers
 - **TeamMembers**: Support staff assigned to categories
-- **Tickets**: Support requests with AI classification
-- **Approvals**: Multi-level approval workflow
-- **TicketHistory**: Complete audit trail
+- **Tickets**: Support requests with AI classification and editable before approval
+- **Approvals**: Multi-layer hierarchical approval workflow with levels, roles, and sequential progression
+- **TicketHistory**: Complete audit trail with edit/cancel tracking
 
 ### Key Features
 
@@ -66,17 +76,29 @@ Flask Application (app.py)
    - Role-based access (Admin vs User)
    - Session management with Flask-Login
 
-4. **Approval Workflow**
-   - Email-based approval system
-   - Multiple approvers per category
-   - All approvers must approve before assignment
-   - Email contains approve/reject links
+4. **Multi-Layer Hierarchical Approval Workflow**
+   - Sequential hierarchical approval (Level 1 → Level 2 → Level 3 → Level 4)
+   - Email-based approval system with signed tokens
+   - Each approval level has a role (Team Lead, Manager, Director, CFO, etc.)
+   - Only current level receives approval notification
+   - Next level automatically notified when current level approves
+   - Level-order enforcement prevents out-of-order approvals
+   - All levels must approve sequentially before assignment
+   - Example: Hardware Request requires 4 levels:
+     1. Team Lead (Level 1) - approves first
+     2. Procurement Manager (Level 2) - notified after Level 1 approves
+     3. Finance Director (Level 3) - notified after Level 2 approves
+     4. CFO (Level 4) - notified after Level 3 approves
+     5. Ticket auto-assigned after Level 4 approves
 
 5. **User Experience**
    - Users see only their tickets and history
+   - **Edit Tickets**: Users can edit ticket description before any approvals (auto-reclassifies)
+   - **Cancel Tickets**: Users can cancel tickets before any approvals start
    - Admins see all tickets with filtering
-   - Clean, modern Bootstrap interface
-   - Real-time status tracking
+   - Clean, modern Bootstrap interface with approval hierarchy visualization
+   - Real-time status tracking with level badges
+   - Clear indicators showing current approval status and next steps
 
 ### Environment Configuration
 
@@ -100,11 +122,12 @@ MAIL_* settings (optional)
 
 ```
 /
-├── app.py                    # Main Flask app with routes
-├── models.py                 # SQLAlchemy database models
+├── app.py                    # Main Flask app with routes + edit/cancel
+├── models.py                 # SQLAlchemy database models with hierarchical approvals
 ├── ai_classifier.py          # AI classification logic
 ├── ticket_assignment.py      # Workload distribution algorithm
 ├── email_service.py          # Email notification service
+├── seed_data.py             # Dummy data script with multi-layer approvals
 ├── requirements.txt          # Python dependencies
 ├── .env.example             # Environment template
 ├── .gitignore               # Git exclusions
