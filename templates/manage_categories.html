@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Categories{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-tags"></i> Manage Categories</h2>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Create Category</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Category Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required placeholder="e.g., Software Installation">
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" placeholder="Brief description of this category"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="keywords" class="form-label">Keywords</label>
+                        <input type="text" class="form-control" id="keywords" name="keywords" placeholder="install, software, application, teams, zoom">
+                        <small class="text-muted">Comma-separated keywords for AI classification</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="approvers" class="form-label">Approvers (Email)</label>
+                        <input type="text" class="form-control" id="approvers" name="approvers" placeholder="manager@company.com, director@company.com">
+                        <small class="text-muted">Comma-separated email addresses</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-circle"></i> Create Category
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0">Existing Categories</h5>
+            </div>
+            <div class="card-body">
+                {% if categories %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Keywords</th>
+                                <th>Approvers</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category in categories %}
+                            <tr>
+                                <td><strong>{{ category.name }}</strong></td>
+                                <td>{{ category.description or '-' }}</td>
+                                <td>
+                                    {% if category.keywords %}
+                                    <small class="text-muted">{{ category.keywords[:50] }}{% if category.keywords|length > 50 %}...{% endif %}</small>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if category.approvers %}
+                                    <small class="text-muted">{{ category.approvers[:30] }}{% if category.approvers|length > 30 %}...{% endif %}</small>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <p>No categories yet. Create your first category!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

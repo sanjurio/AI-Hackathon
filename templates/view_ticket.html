@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Ticket #{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <h2><i class="bi bi-ticket-detailed"></i> Ticket #{{ ticket.id }}</h2>
+    </div>
+    <div class="col-auto">
+        <a href="{% if current_user.is_admin %}{{ url_for('admin_tickets') }}{% else %}{{ url_for('user_dashboard') }}{% endif %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Ticket Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Status:</strong>
+                    {% if ticket.status == 'Pending Approval' %}
+                    <span class="badge bg-warning text-dark">{{ ticket.status }}</span>
+                    {% elif ticket.status == 'Approved' %}
+                    <span class="badge bg-info">{{ ticket.status }}</span>
+                    {% elif ticket.status == 'Assigned' or ticket.status == 'In Progress' %}
+                    <span class="badge bg-primary">{{ ticket.status }}</span>
+                    {% elif ticket.status == 'Completed' %}
+                    <span class="badge bg-success">{{ ticket.status }}</span>
+                    {% elif ticket.status == 'Rejected' %}
+                    <span class="badge bg-danger">{{ ticket.status }}</span>
+                    {% else %}
+                    <span class="badge bg-secondary">{{ ticket.status }}</span>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Category:</strong>
+                    {% if ticket.category %}
+                    <span class="badge bg-info">{{ ticket.category.name }}</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Uncategorized</span>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Description:</strong>
+                    <p class="mt-2">{{ ticket.description }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Created By:</strong> {{ ticket.creator.name }} ({{ ticket.creator.email }})
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Created At:</strong> {{ ticket.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                </div>
+                
+                {% if ticket.assignee %}
+                <div class="mb-3">
+                    <strong>Assigned To:</strong> {{ ticket.assignee.name }} ({{ ticket.assignee.email }})
+                </div>
+                {% endif %}
+                
+                {% if current_user.is_admin and ticket.status in ['Assigned', 'In Progress'] %}
+                <div class="mt-4">
+                    <strong>Update Status:</strong>
+                    <div class="btn-group mt-2" role="group">
+                        <button class="btn btn-sm btn-primary" onclick="updateStatus({{ ticket.id }}, 'In Progress')">
+                            Mark In Progress
+                        </button>
+                        <button class="btn btn-sm btn-success" onclick="updateStatus({{ ticket.id }}, 'Completed')">
+                            Mark Completed
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if approvals %}
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-check-circle"></i> Approvals</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Approver</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for approval in approvals %}
+                            <tr>
+                                <td>{{ approval.approver_email }}</td>
+                                <td>
+                                    {% if approval.status == 'Pending' %}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                    {% elif approval.status == 'Approved' %}
+                                    <span class="badge bg-success">Approved</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Rejected</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if approval.approved_at %}
+                                    {{ approval.approved_at.strftime('%Y-%m-%d %H:%M') }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> History</h5>
+            </div>
+            <div class="card-body">
+                {% if history %}
+                <div class="timeline">
+                    {% for entry in history %}
+                    <div class="timeline-item mb-3">
+                        <div class="timeline-marker bg-primary"></div>
+                        <div class="timeline-content">
+                            <strong>{{ entry.action }}</strong>
+                            {% if entry.details %}
+                            <p class="mb-1 text-muted small">{{ entry.details }}</p>
+                            {% endif %}
+                            <small class="text-muted">{{ entry.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No history available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if current_user.is_admin %}
+<script>
+function updateStatus(ticketId, status) {
+    if (confirm(`Are you sure you want to mark this ticket as ${status}?`)) {
+        fetch(`/api/ticket/${ticketId}/status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status: status })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error updating status: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error);
+        });
+    }
+}
+</script>
+{% endif %}
+{% endblock %}

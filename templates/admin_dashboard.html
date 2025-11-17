@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-speedometer2"></i> Admin Dashboard</h2>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card shadow text-center">
+            <div class="card-body">
+                <i class="bi bi-inbox text-muted" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ total_tickets }}</h3>
+                <p class="text-muted mb-0">Total Tickets</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow text-center">
+            <div class="card-body">
+                <i class="bi bi-hourglass-split text-warning" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ pending_tickets }}</h3>
+                <p class="text-muted mb-0">Pending Approval</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow text-center">
+            <div class="card-body">
+                <i class="bi bi-lightning text-primary" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ active_tickets }}</h3>
+                <p class="text-muted mb-0">Active</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow text-center">
+            <div class="card-body">
+                <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ completed_tickets }}</h3>
+                <p class="text-muted mb-0">Completed</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Tickets</h5>
+    </div>
+    <div class="card-body">
+        {% if recent_tickets %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th>Created By</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ticket in recent_tickets %}
+                    <tr>
+                        <td><strong>#{{ ticket.id }}</strong></td>
+                        <td>{{ ticket.description[:50] }}{% if ticket.description|length > 50 %}...{% endif %}</td>
+                        <td>
+                            {% if ticket.category %}
+                            <span class="badge bg-info">{{ ticket.category.name }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Uncategorized</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if ticket.status == 'Pending Approval' %}
+                            <span class="badge bg-warning text-dark">{{ ticket.status }}</span>
+                            {% elif ticket.status == 'Approved' %}
+                            <span class="badge bg-info">{{ ticket.status }}</span>
+                            {% elif ticket.status == 'Assigned' or ticket.status == 'In Progress' %}
+                            <span class="badge bg-primary">{{ ticket.status }}</span>
+                            {% elif ticket.status == 'Completed' %}
+                            <span class="badge bg-success">{{ ticket.status }}</span>
+                            {% elif ticket.status == 'Rejected' %}
+                            <span class="badge bg-danger">{{ ticket.status }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ ticket.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ ticket.creator.name }}</td>
+                        <td>{{ ticket.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <a href="{{ url_for('view_ticket', ticket_id=ticket.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+            <p class="mt-2">No tickets yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

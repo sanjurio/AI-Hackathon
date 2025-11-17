@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Create Ticket{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-plus-circle"></i> Create New Ticket</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-robot"></i> <strong>AI-Powered Classification:</strong> Just describe your request in detail, and our AI will automatically categorize it and route it to the right team!
+                </div>
+                
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Describe Your Request</label>
+                        <textarea class="form-control" id="description" name="description" rows="6" required minlength="10" placeholder="Example: I need to install Microsoft Teams on my laptop for client meetings. My laptop model is Dell Latitude 5420 running Windows 11 Pro."></textarea>
+                        <small class="text-muted">Please provide as much detail as possible (minimum 10 characters)</small>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('user_dashboard') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send"></i> Submit Ticket
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Tips for Better Tickets</h5>
+            </div>
+            <div class="card-body">
+                <ul>
+                    <li>Be specific about what you need</li>
+                    <li>Include relevant details (device model, software version, etc.)</li>
+                    <li>Mention any deadlines or urgency</li>
+                    <li>Describe the business impact if applicable</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
