@@ -5,6 +5,9 @@ from datetime import datetime
 
 def seed_database():
     with app.app_context():
+        print("Creating database tables...")
+        db.create_all()
+        
         print("Clearing existing data...")
         TicketHistory.query.delete()
         Approval.query.delete()
