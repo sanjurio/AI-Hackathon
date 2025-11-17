@@ -9,6 +9,7 @@
             <div class="card-body py-5">
                 <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
                 <h3 class="mt-4">{{ message }}</h3>
+                {% if ticket %}
                 <p class="text-muted mt-3">
                     Ticket #{{ ticket.id }} has been processed.
                 </p>
@@ -17,6 +18,7 @@
                         <i class="bi bi-eye"></i> View Ticket Details
                     </a>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>

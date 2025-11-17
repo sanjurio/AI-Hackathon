@@ -2,17 +2,20 @@ import os
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from datetime import datetime
 from models import db, User, Ticket, Category, TeamMember, Approval, TicketHistory
 from ai_classifier import classify_ticket
 from ticket_assignment import assign_ticket_to_team_member
-from email_service import send_approval_email, send_assignment_email
+from email_service import mail, send_approval_email, send_assignment_email
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SESSION_SECRET', 'dev-secret-key-change-in-production')
+
+serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 database_url = os.getenv('DATABASE_URL')
 if database_url:
@@ -32,6 +35,7 @@ app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD', '')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@ticketing.com')
 
 db.init_app(app)
+mail.init_app(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -141,16 +145,33 @@ def create_ticket():
         db.session.commit()
         
         if category and category.approvers:
+            ticket_id = ticket.id
+            description = ticket.description
+            category_name = category.name if category else 'Uncategorized'
+            creator_name = current_user.name
+            
             approvers = category.approvers.split(',')
+            approval_ids = []
             for approver_email in approvers:
                 approval = Approval(
-                    ticket_id=ticket.id,
+                    ticket_id=ticket_id,
                     approver_email=approver_email.strip(),
                     status='Pending'
                 )
                 db.session.add(approval)
-                send_approval_email(ticket, approver_email.strip())
+                approval_ids.append((approver_email.strip(), approval))
             db.session.commit()
+            
+            for approver_email, approval in approval_ids:
+                token = serializer.dumps({'approval_id': approval.id, 'ticket_id': ticket_id}, salt='approval-token')
+                send_approval_email(
+                    ticket_id=ticket_id,
+                    description=description,
+                    category_name=category_name,
+                    creator_name=creator_name,
+                    approval_token=token,
+                    approver_email=approver_email
+                )
         
         flash('Ticket created successfully! Waiting for approval.', 'success')
         return redirect(url_for('user_dashboard'))
@@ -291,10 +312,33 @@ def admin_tickets():
     
     return render_template('admin_tickets.html', tickets=tickets, status_filter=status_filter)
 
-@app.route('/approve/<int:ticket_id>/<int:approval_id>/<action>')
-def approve_ticket(ticket_id, approval_id, action):
+@app.route('/approve/<token>/<action>')
+def approve_ticket(token, action):
+    try:
+        data = serializer.loads(token, salt='approval-token', max_age=604800)
+        approval_id = data.get('approval_id')
+        ticket_id = data.get('ticket_id')
+    except SignatureExpired:
+        return render_template('approval_result.html', 
+                             message='This approval link has expired (valid for 7 days).',
+                             ticket=None), 400
+    except BadSignature:
+        return render_template('approval_result.html', 
+                             message='Invalid approval link.',
+                             ticket=None), 400
+    
     approval = Approval.query.get_or_404(approval_id)
     ticket = Ticket.query.get_or_404(ticket_id)
+    
+    if approval.ticket_id != ticket_id:
+        return render_template('approval_result.html', 
+                             message='Invalid approval link. This approval does not belong to this ticket.',
+                             ticket=None), 400
+    
+    if approval.status != 'Pending':
+        return render_template('approval_result.html',
+                             message=f'This approval has already been {approval.status.lower()}.',
+                             ticket=ticket)
     
     if action == 'approve':
         approval.status = 'Approved'
@@ -322,8 +366,16 @@ def approve_ticket(ticket_id, approval_id, action):
                     details=f'Assigned to {assigned_member.name}'
                 )
                 db.session.add(history)
+                db.session.commit()
                 
-                send_assignment_email(ticket, assigned_member)
+                send_assignment_email(
+                    ticket_id=ticket.id,
+                    description=ticket.description,
+                    category_name=ticket.category.name if ticket.category else 'Uncategorized',
+                    creator_name=ticket.creator.name,
+                    team_member_name=assigned_member.name,
+                    team_member_email=assigned_member.email
+                )
         
         db.session.commit()
         message = 'Ticket approved successfully!'
