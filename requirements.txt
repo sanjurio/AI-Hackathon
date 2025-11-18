@@ -49,3 +49,9 @@ python-dotenv
 scikit-learn
 sqlalchemy
 werkzeug
+email_validator
+flask
+flask-sqlalchemy
+gunicorn
+psycopg2-binary
+gunicorn
