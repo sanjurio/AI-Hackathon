@@ -26,6 +26,15 @@ else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ticketing.db'
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
+    'pool_size': 10,
+    'max_overflow': 20,
+    'connect_args': {
+        'connect_timeout': 10,
+    }
+}
 
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
 app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
