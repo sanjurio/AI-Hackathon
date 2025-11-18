@@ -79,8 +79,12 @@ def login():
 @app.route('/logout')
 @login_required
 def logout():
-    logout_user()
-    flash('You have been logged out.', 'info')
+    try:
+        logout_user()
+        flash('You have been logged out.', 'info')
+    except Exception as e:
+        app.logger.error(f"Logout error: {e}")
+        flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
 
 @app.route('/change-password', methods=['GET', 'POST'])
