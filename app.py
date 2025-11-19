@@ -7,13 +7,15 @@ from datetime import datetime
 from models import db, User, Ticket, Category, TeamMember, Approval, TicketHistory
 from ai_classifier import classify_ticket
 from ticket_assignment import assign_ticket_to_team_member
-from email_service import send_approval_email, send_assignment_email
+from email_service import send_approval_email, send_assignment_email, init_mail
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SESSION_SECRET', 'dev-secret-key-change-in-production')
+
+init_mail(app)
 
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
