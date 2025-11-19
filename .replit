@@ -17,10 +17,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "flask-app"
+args = "Start application"
 
 [[workflows.workflow]]
-name = "flask-app"
+name = "Start application"
 author = "agent"
 
 [[workflows.workflow.tasks]]
@@ -36,16 +36,16 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 32991
-externalPort = 3000
-
-[[ports]]
 localPort = 34469
 externalPort = 3002
 
 [[ports]]
 localPort = 34483
 externalPort = 3001
+
+[[ports]]
+localPort = 37235
+externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"

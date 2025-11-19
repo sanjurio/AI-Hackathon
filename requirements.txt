@@ -12,3 +12,12 @@ gunicorn
 itsdangerous
 email_validator
 resend
+email_validator
+flask
+flask-sqlalchemy
+gunicorn
+psycopg2-binary
+email-validator
+flask-sqlalchemy
+gunicorn
+itsdangerous
