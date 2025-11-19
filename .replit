@@ -1,4 +1,4 @@
-modules = ["web", "python-3.11", "nodejs-20"]
+modules = ["python-3.11", "web", "nodejs-20"]
 [agent]
 expertMode = true
 integrations = ["python_database:1.0.0", "python_openai:1.0.0", "resend:1.0.0"]
@@ -23,25 +23,25 @@ args = "Start application"
 name = "Start application"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "gunicorn --bind 0.0.0.0:5000 --reuse-port --reload main:app"
 waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [[ports]]
 localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 34469
-externalPort = 3002
-
-[[ports]]
 localPort = 34483
 externalPort = 3001
+
+[[ports]]
+localPort = 44161
+externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"
