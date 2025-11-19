@@ -85,15 +85,26 @@
                 </div>
                 {% endif %}
                 
-                {% if current_user.is_admin and ticket.status in ['Assigned', 'In Progress'] %}
+                {% if ticket.resolution_comment %}
+                <div class="mb-3">
+                    <strong>Resolution:</strong>
+                    <div class="alert alert-success mt-2">
+                        <i class="bi bi-check-circle"></i> {{ ticket.resolution_comment }}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if (current_user.is_admin or is_assigned) and ticket.status in ['Assigned', 'In Progress'] %}
                 <div class="mt-4">
                     <strong>Update Status:</strong>
                     <div class="btn-group mt-2" role="group">
-                        <button class="btn btn-sm btn-primary" onclick="updateStatus({{ ticket.id }}, 'In Progress')">
-                            Mark In Progress
+                        {% if ticket.status == 'Assigned' %}
+                        <button class="btn btn-sm btn-primary" onclick="updateStatusWithComment({{ ticket.id }}, 'In Progress')">
+                            <i class="bi bi-play-circle"></i> Start Working
                         </button>
-                        <button class="btn btn-sm btn-success" onclick="updateStatus({{ ticket.id }}, 'Completed')">
-                            Mark Completed
+                        {% endif %}
+                        <button class="btn btn-sm btn-success" onclick="updateStatusWithComment({{ ticket.id }}, 'Completed')">
+                            <i class="bi bi-check-circle"></i> Mark Completed
                         </button>
                     </div>
                 </div>
@@ -170,6 +181,9 @@
                                     {% else %}
                                     {{ approval.approver_email }}
                                     {% endif %}
+                                    {% if approval.comments %}
+                                    <br><small class="text-info"><i class="bi bi-chat-left-text"></i> {{ approval.comments }}</small>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     {% if approval.status == 'Pending' %}
@@ -229,28 +243,50 @@
 </div>
 
 <script>
-{% if current_user.is_admin %}
-function updateStatus(ticketId, status) {
-    if (confirm(`Are you sure you want to mark this ticket as ${status}?`)) {
-        fetch(`/api/ticket/${ticketId}/status`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ status: status })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Error updating status: ' + data.error);
-            }
-        })
-        .catch(error => {
-            alert('Error: ' + error);
-        });
+{% if current_user.is_admin or is_assigned %}
+function updateStatusWithComment(ticketId, status) {
+    let message, commentPrompt;
+    
+    if (status === 'Completed') {
+        message = 'Please provide details about how this ticket was resolved:';
+        commentPrompt = prompt(message, '');
+        
+        if (commentPrompt === null) {
+            return;
+        }
+        
+        if (!commentPrompt || commentPrompt.trim() === '') {
+            alert('Please provide resolution details before marking as completed.');
+            return;
+        }
+    } else if (status === 'In Progress') {
+        commentPrompt = prompt('Optional: Add a note about starting this work:', '');
+        if (commentPrompt === null) {
+            return;
+        }
     }
+    
+    fetch(`/api/ticket/${ticketId}/status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+            status: status,
+            resolution_comment: commentPrompt || ''
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error updating status: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+    });
 }
 {% endif %}
 

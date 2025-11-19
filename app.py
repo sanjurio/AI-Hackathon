@@ -135,6 +135,11 @@ def user_dashboard():
     if current_user.is_admin:
         return redirect(url_for('admin_dashboard'))
     
+    team_member = TeamMember.query.filter_by(email=current_user.email).first()
+    
+    if team_member:
+        return redirect(url_for('team_member_dashboard'))
+    
     tickets = Ticket.query.filter_by(created_by=current_user.id).order_by(Ticket.created_at.desc()).all()
     
     pending_approvals = db.session.query(Ticket).join(Approval).filter(
@@ -143,6 +148,26 @@ def user_dashboard():
     ).order_by(Ticket.created_at.desc()).all()
     
     return render_template('user_dashboard.html', tickets=tickets, pending_approvals=pending_approvals)
+
+@app.route('/team/dashboard')
+@login_required
+def team_member_dashboard():
+    team_member = TeamMember.query.filter_by(email=current_user.email).first()
+    
+    if not team_member:
+        flash('You are not registered as a team member.', 'danger')
+        return redirect(url_for('user_dashboard'))
+    
+    assigned_tickets = Ticket.query.filter_by(assigned_to=team_member.id).order_by(Ticket.created_at.desc()).all()
+    
+    active_tickets = [t for t in assigned_tickets if t.status in ['Assigned', 'In Progress']]
+    completed_tickets = [t for t in assigned_tickets if t.status == 'Completed']
+    
+    return render_template('team_member_dashboard.html', 
+                         team_member=team_member,
+                         assigned_tickets=assigned_tickets,
+                         active_tickets=active_tickets,
+                         completed_tickets=completed_tickets)
 
 @app.route('/user/create-ticket', methods=['GET', 'POST'])
 @login_required
@@ -230,8 +255,10 @@ def view_ticket(ticket_id):
     approvals = Approval.query.filter_by(ticket_id=ticket_id).order_by(Approval.approval_level).all()
     
     is_approver = any(a.approver_email == current_user.email for a in approvals)
+    team_member = TeamMember.query.filter_by(email=current_user.email).first()
+    is_assigned = team_member and ticket.assigned_to == team_member.id
     
-    if not current_user.is_admin and ticket.created_by != current_user.id and not is_approver:
+    if not current_user.is_admin and ticket.created_by != current_user.id and not is_approver and not is_assigned:
         flash('You do not have permission to view this ticket.', 'danger')
         return redirect(url_for('user_dashboard'))
     
@@ -271,7 +298,9 @@ def view_ticket(ticket_id):
                          ai_classified=ai_classified,
                          test_mode_urls=test_mode_urls,
                          current_user_approval=current_user_approval,
-                         approval_token=approval_token)
+                         approval_token=approval_token,
+                         is_assigned=is_assigned,
+                         team_member=team_member)
 
 @app.route('/user/ticket/<int:ticket_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -502,7 +531,7 @@ def admin_tickets():
     
     return render_template('admin_tickets.html', tickets=tickets, status_filter=status_filter)
 
-@app.route('/approve/<token>/<action>')
+@app.route('/approve/<token>/<action>', methods=['GET', 'POST'])
 def approve_ticket(token, action):
     try:
         data = serializer.loads(token, salt='approval-token', max_age=604800)
@@ -546,17 +575,28 @@ def approve_ticket(token, action):
                                  message=f'Cannot approve at Level {approval.approval_level}. Previous level must approve first.',
                                  ticket=ticket), 400
     
+    if request.method == 'GET':
+        return render_template('approval_form.html', 
+                             ticket=ticket, 
+                             approval=approval, 
+                             action=action,
+                             token=token)
+    
+    comment = request.form.get('comment', '').strip()
+    
     if action == 'approve':
         approval.status = 'Approved'
         approval.approved_at = datetime.utcnow()
+        approval.comments = comment if comment else None
         
         role_info = f" ({approval.approver_role})" if approval.approver_role else ""
         name_info = approval.approver_name if approval.approver_name else approval.approver_email
         
+        comment_info = f" - Comment: {comment}" if comment else ""
         history = TicketHistory(
             ticket_id=ticket_id,
             action='Approval Received',
-            details=f'Level {approval.approval_level} approved by {name_info}{role_info}'
+            details=f'Level {approval.approval_level} approved by {name_info}{role_info}{comment_info}'
         )
         db.session.add(history)
         
@@ -618,12 +658,17 @@ def approve_ticket(token, action):
     elif action == 'reject':
         approval.status = 'Rejected'
         approval.approved_at = datetime.utcnow()
+        approval.comments = comment if comment else None
         ticket.status = 'Rejected'
+        
+        role_info = f" ({approval.approver_role})" if approval.approver_role else ""
+        name_info = approval.approver_name if approval.approver_name else approval.approver_email
+        comment_info = f" - Reason: {comment}" if comment else ""
         
         history = TicketHistory(
             ticket_id=ticket_id,
             action='Ticket Rejected',
-            details=f'Rejected by {approval.approver_email}'
+            details=f'Rejected by {name_info}{role_info}{comment_info}'
         )
         db.session.add(history)
         db.session.commit()
@@ -637,20 +682,32 @@ def approve_ticket(token, action):
 @app.route('/api/ticket/<int:ticket_id>/status', methods=['POST'])
 @login_required
 def update_ticket_status(ticket_id):
-    if not current_user.is_admin:
+    ticket = Ticket.query.get_or_404(ticket_id)
+    team_member = TeamMember.query.filter_by(email=current_user.email).first()
+    
+    if not current_user.is_admin and not (team_member and ticket.assigned_to == team_member.id):
         return jsonify({'error': 'Unauthorized'}), 403
     
-    ticket = Ticket.query.get_or_404(ticket_id)
     new_status = request.json.get('status')
+    resolution_comment = request.json.get('resolution_comment', '').strip()
     
     if new_status in ['In Progress', 'Completed', 'Cancelled']:
         old_status = ticket.status
         ticket.status = new_status
         
+        if resolution_comment:
+            ticket.resolution_comment = resolution_comment
+        
+        details = f'Status changed from {old_status} to {new_status}'
+        if resolution_comment and new_status == 'Completed':
+            details += f' - Resolution: {resolution_comment}'
+        elif resolution_comment:
+            details += f' - Note: {resolution_comment}'
+        
         history = TicketHistory(
             ticket_id=ticket_id,
             action='Status Changed',
-            details=f'Status changed from {old_status} to {new_status}'
+            details=details
         )
         db.session.add(history)
         db.session.commit()
