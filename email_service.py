@@ -6,13 +6,17 @@ from flask import url_for
 def get_resend_credentials():
     """Get Resend credentials from Replit connector"""
     try:
-        hostname = os.getenv('CONNECTORS_HOSTNAME', 'connectors.replit.com')
+        hostname = os.getenv('REPLIT_CONNECTORS_HOSTNAME', 'connectors.replit.com')
         repl_identity = os.getenv('REPL_IDENTITY')
+        web_repl_renewal = os.getenv('WEB_REPL_RENEWAL')
         
-        if not repl_identity:
-            raise ValueError("REPL_IDENTITY not found - cannot access Replit connector")
+        if repl_identity:
+            x_replit_token = f'repl {repl_identity}'
+        elif web_repl_renewal:
+            x_replit_token = f'depl {web_repl_renewal}'
+        else:
+            raise ValueError("REPL_IDENTITY or WEB_REPL_RENEWAL not found - cannot access Replit connector")
         
-        x_replit_token = f'repl {repl_identity}'
         
         response = requests.get(
             f'https://{hostname}/api/v2/connection?include_secrets=true&connector_names=resend',
