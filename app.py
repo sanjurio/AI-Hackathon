@@ -136,7 +136,13 @@ def user_dashboard():
         return redirect(url_for('admin_dashboard'))
     
     tickets = Ticket.query.filter_by(created_by=current_user.id).order_by(Ticket.created_at.desc()).all()
-    return render_template('user_dashboard.html', tickets=tickets)
+    
+    pending_approvals = db.session.query(Ticket).join(Approval).filter(
+        Approval.approver_email == current_user.email,
+        Approval.status == 'Pending'
+    ).order_by(Ticket.created_at.desc()).all()
+    
+    return render_template('user_dashboard.html', tickets=tickets, pending_approvals=pending_approvals)
 
 @app.route('/user/create-ticket', methods=['GET', 'POST'])
 @login_required

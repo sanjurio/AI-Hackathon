@@ -3,6 +3,53 @@
 {% block title %}My Tickets{% endblock %}
 
 {% block content %}
+
+{% if pending_approvals %}
+<div class="card shadow mb-4 border-warning">
+    <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Pending Approvals ({{ pending_approvals|length }})</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Created By</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ticket in pending_approvals %}
+                    <tr>
+                        <td><strong>#{{ ticket.id }}</strong></td>
+                        <td>{{ ticket.description[:80] }}{% if ticket.description|length > 80 %}...{% endif %}</td>
+                        <td>
+                            {% if ticket.category %}
+                            <span class="badge bg-info">{{ ticket.category.name }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Uncategorized</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ ticket.creator.name }}</td>
+                        <td>{{ ticket.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <a href="{{ url_for('view_ticket', ticket_id=ticket.id) }}" class="btn btn-sm btn-warning">
+                                <i class="bi bi-hand-thumbs-up"></i> Review & Approve
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="row mb-4">
     <div class="col">
         <h2><i class="bi bi-person-badge"></i> My Tickets</h2>
