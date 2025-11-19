@@ -562,7 +562,7 @@ def approve_ticket(token, action):
             db.session.commit()
             
             token = serializer.dumps({'approval_id': next_approval.id, 'ticket_id': ticket_id}, salt='approval-token')
-            send_approval_email(
+            email_sent = send_approval_email(
                 ticket_id=ticket_id,
                 description=ticket.description,
                 category_name=ticket.category.name if ticket.category else 'Uncategorized',
@@ -570,6 +570,10 @@ def approve_ticket(token, action):
                 approval_token=token,
                 approver_email=next_approval.approver_email
             )
+            if email_sent:
+                print(f"✓ Next level approval email sent to {next_approval.approver_email} for ticket #{ticket_id}")
+            else:
+                print(f"✗ Failed to send next level approval email to {next_approval.approver_email}")
         
         if all(a.status == 'Approved' for a in all_approvals):
             ticket.status = 'Approved'
@@ -587,7 +591,7 @@ def approve_ticket(token, action):
                 db.session.add(history)
                 db.session.commit()
                 
-                send_assignment_email(
+                email_sent = send_assignment_email(
                     ticket_id=ticket.id,
                     description=ticket.description,
                     category_name=ticket.category.name if ticket.category else 'Uncategorized',
@@ -595,6 +599,10 @@ def approve_ticket(token, action):
                     team_member_name=assigned_member.name,
                     team_member_email=assigned_member.email
                 )
+                if email_sent:
+                    print(f"✓ Assignment email sent to {assigned_member.email} for ticket #{ticket.id}")
+                else:
+                    print(f"✗ Failed to send assignment email to {assigned_member.email}")
         
         db.session.commit()
         message = f'Ticket approved successfully at Level {approval.approval_level}!'
