@@ -34,11 +34,11 @@ def classify_ticket_with_openai(description):
     ])
     
     try:
-        logger.info(f"🤖 CALLING OpenAI GPT-3.5-turbo for ticket classification...")
+        logger.info(f"🤖 CALLING OpenAI GPT-4o-mini for ticket classification...")
         logger.info(f"   Ticket description: '{description[:100]}...'")
         
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
@@ -58,7 +58,7 @@ def classify_ticket_with_openai(description):
         
         for cat in categories:
             if cat.name.lower() in classified_category.lower():
-                logger.info(f"✅ AI CLASSIFIED as: {cat.name} (using OpenAI GPT-3.5-turbo)")
+                logger.info(f"✅ AI CLASSIFIED as: {cat.name} (using OpenAI GPT-4o-mini)")
                 return cat
         
         logger.warning(f"OpenAI returned '{classified_category}' but no matching category found")
