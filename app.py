@@ -7,7 +7,7 @@ from datetime import datetime
 from models import db, User, Ticket, Category, TeamMember, Approval, TicketHistory
 from ai_classifier import classify_ticket
 from ticket_assignment import assign_ticket_to_team_member
-from email_service import send_approval_email, send_assignment_email, init_mail
+from email_service import send_approval_email, send_assignment_email, send_ticket_creation_email, send_approval_update_email, init_mail
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -240,6 +240,18 @@ def create_ticket():
                         print(f"✓ Approval email sent to {approver_email} for ticket #{ticket_id}")
                     else:
                         print(f"✗ Failed to send approval email to {approver_email} for ticket #{ticket_id}")
+        
+        creation_email_sent = send_ticket_creation_email(
+            ticket_id=ticket.id,
+            description=ticket.description,
+            category_name=category.name if category else 'Uncategorized',
+            creator_email=current_user.email,
+            creator_name=current_user.name
+        )
+        if creation_email_sent:
+            print(f"✓ Ticket creation email sent to {current_user.email}")
+        else:
+            print(f"✗ Failed to send ticket creation email to {current_user.email}")
         
         flash('Ticket created successfully! Waiting for approval.', 'success')
         return redirect(url_for('user_dashboard'))
@@ -601,6 +613,23 @@ def approve_ticket(token, action):
         db.session.add(history)
         
         all_approvals = Approval.query.filter_by(ticket_id=ticket_id).order_by(Approval.approval_level).all()
+        total_levels = len(all_approvals)
+        
+        update_email_sent = send_approval_update_email(
+            ticket_id=ticket_id,
+            description=ticket.description,
+            creator_email=ticket.creator.email,
+            creator_name=ticket.creator.name,
+            approver_name=name_info,
+            approver_role=approval.approver_role,
+            approval_level=approval.approval_level,
+            total_levels=total_levels,
+            comment=comment
+        )
+        if update_email_sent:
+            print(f"✓ Approval update email sent to {ticket.creator.email}")
+        else:
+            print(f"✗ Failed to send approval update email to {ticket.creator.email}")
         
         next_level = approval.approval_level + 1
         next_approval = Approval.query.filter_by(ticket_id=ticket_id, approval_level=next_level).first()

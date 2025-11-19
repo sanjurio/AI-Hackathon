@@ -141,3 +141,118 @@ def send_assignment_email(ticket_id, description, category_name, creator_name, t
     except Exception as e:
         print(f"✗ Failed to send assignment email to {team_member_email}: {e}")
         return False
+
+def send_ticket_creation_email(ticket_id, description, category_name, creator_email, creator_name):
+    """Send ticket creation confirmation email to user"""
+    try:
+        if not get_email_configured():
+            print(f"✗ Email not configured - skipping ticket creation email to {creator_email}")
+            return False
+        
+        msg = Message(
+            subject=f'Ticket Created Successfully - #{ticket_id}',
+            recipients=[creator_email]
+        )
+        
+        msg.html = f"""
+        <html>
+        <body>
+            <h2>Ticket Created Successfully</h2>
+            <p>Hello {creator_name},</p>
+            <p>Your ticket has been created and is awaiting approval.</p>
+            <table style="border-collapse: collapse; margin: 20px 0;">
+                <tr>
+                    <td style="padding: 8px; font-weight: bold;">Ticket ID:</td>
+                    <td style="padding: 8px;">#{ticket_id}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; font-weight: bold;">Description:</td>
+                    <td style="padding: 8px;">{description}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; font-weight: bold;">Category:</td>
+                    <td style="padding: 8px;">{category_name}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; font-weight: bold;">Status:</td>
+                    <td style="padding: 8px;">Pending Approval</td>
+                </tr>
+            </table>
+            <p>You will receive email updates as your ticket progresses through the approval process.</p>
+            <p>Thank you,<br>Ticketing System</p>
+        </body>
+        </html>
+        """
+        
+        mail.send(msg)
+        print(f"✓ Ticket creation email sent to {creator_email}")
+        return True
+    except Exception as e:
+        print(f"✗ Failed to send ticket creation email to {creator_email}: {e}")
+        return False
+
+def send_approval_update_email(ticket_id, description, creator_email, creator_name, approver_name, approver_role, approval_level, total_levels, comment=None):
+    """Send approval update email to ticket creator"""
+    try:
+        if not get_email_configured():
+            print(f"✗ Email not configured - skipping approval update email to {creator_email}")
+            return False
+        
+        msg = Message(
+            subject=f'Ticket #{ticket_id} - Approval Update',
+            recipients=[creator_email]
+        )
+        
+        role_text = f" ({approver_role})" if approver_role else ""
+        next_level_text = ""
+        if approval_level < total_levels:
+            next_level_text = f"<p><strong>Next Step:</strong> Waiting for Level {approval_level + 1} approval.</p>"
+        else:
+            next_level_text = "<p><strong>Next Step:</strong> All approvals complete! Ticket will be assigned to a team member shortly.</p>"
+        
+        comment_html = ""
+        if comment:
+            comment_html = f"""
+            <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #0d6efd; margin: 20px 0;">
+                <strong>Approver Comment:</strong><br>
+                {comment}
+            </div>
+            """
+        
+        msg.html = f"""
+        <html>
+        <body>
+            <h2>Ticket Approval Update</h2>
+            <p>Hello {creator_name},</p>
+            <p>Your ticket has received an approval!</p>
+            <table style="border-collapse: collapse; margin: 20px 0;">
+                <tr>
+                    <td style="padding: 8px; font-weight: bold;">Ticket ID:</td>
+                    <td style="padding: 8px;">#{ticket_id}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; font-weight: bold;">Description:</td>
+                    <td style="padding: 8px;">{description}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; font-weight: bold;">Approved By:</td>
+                    <td style="padding: 8px;">{approver_name}{role_text}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; font-weight: bold;">Approval Level:</td>
+                    <td style="padding: 8px;">Level {approval_level} of {total_levels}</td>
+                </tr>
+            </table>
+            {comment_html}
+            {next_level_text}
+            <p>Thank you,<br>Ticketing System</p>
+        </body>
+        </html>
+        """
+        
+        mail.send(msg)
+        print(f"✓ Approval update email sent to {creator_email}")
+        return True
+    except Exception as e:
+        print(f"✗ Failed to send approval update email to {creator_email}: {e}")
+        return False

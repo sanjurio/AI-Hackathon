@@ -99,26 +99,119 @@ def seed_database():
         
         db.session.commit()
         
-        print("\nCreating team members...")
+        print("\nCreating IT support team members (5 members)...")
         
         team_members_data = [
-            {'name': 'Tech Support', 'email': 'thbsaitest6@gmail.com', 'category': 'Software Installation'},
-            {'name': 'HR Support', 'email': 'thbsaitest6@gmail.com', 'category': 'Timesheet Modification'},
-            {'name': 'IT Support', 'email': 'thbsaitest6@gmail.com', 'category': 'Hardware Request'},
-            {'name': 'Security Support', 'email': 'thbsaitest6@gmail.com', 'category': 'Access Request'},
-            {'name': 'Travel Support', 'email': 'thbsaitest6@gmail.com', 'category': 'Travel Authorization'},
+            {'name': 'Alice Support', 'email': 'thbsaitest6@gmail.com', 'password': 'support123', 'category': 'Software Installation'},
+            {'name': 'Bob Support', 'email': 'thbsaitest7@gmail.com', 'password': 'support123', 'category': 'Software Installation'},
+            {'name': 'Carol Support', 'email': 'thbsaitest8@gmail.com', 'password': 'support123', 'category': 'Hardware Request'},
+            {'name': 'David Support', 'email': 'thbsaitest9@gmail.com', 'password': 'support123', 'category': 'Access Request'},
+            {'name': 'Eve Support', 'email': 'thbsaitest10@gmail.com', 'password': 'support123', 'category': 'Software Installation'},
         ]
         
+        team_members = {}
         for tm_data in team_members_data:
+            user = User(
+                name=tm_data['name'],
+                email=tm_data['email'],
+                password=generate_password_hash(tm_data['password']),
+                is_admin=False,
+                must_change_password=False
+            )
+            db.session.add(user)
+            db.session.commit()
+            
             team_member = TeamMember(
                 name=tm_data['name'],
                 email=tm_data['email'],
                 category_id=categories[tm_data['category']].id
             )
             db.session.add(team_member)
-            print(f"Created team member: {tm_data['name']} ({tm_data['category']})")
+            team_members[tm_data['email']] = team_member
+            print(f"Created team member: {tm_data['name']} - {tm_data['email']} / {tm_data['password']} ({tm_data['category']})")
         
         db.session.commit()
+        
+        print("\nCreating 11 dummy tickets to demonstrate load balancing...")
+        
+        dummy_tickets_data = [
+            {"description": "I need Microsoft Office installed on my laptop for presentation work", "category": "Software Installation"},
+            {"description": "Can you install Adobe Photoshop on my computer?", "category": "Software Installation"},
+            {"description": "I need a new laptop - current one is too slow for development", "category": "Hardware Request"},
+            {"description": "Please provide me with a second monitor for productivity", "category": "Hardware Request"},
+            {"description": "I need access to the finance database for reporting", "category": "Access Request"},
+            {"description": "Can I get permissions to the HR portal?", "category": "Access Request"},
+            {"description": "I need to install Slack on my work computer", "category": "Software Installation"},
+            {"description": "My keyboard is broken, need a replacement", "category": "Hardware Request"},
+            {"description": "I need access to the project management tool", "category": "Access Request"},
+            {"description": "Can you install Python and VS Code on my machine?", "category": "Software Installation"},
+            {"description": "I need a new mouse, the current one is not working", "category": "Hardware Request"}
+        ]
+        
+        john = users['thbsaitest2@gmail.com']
+        
+        for idx, ticket_data in enumerate(dummy_tickets_data, 1):
+            description = ticket_data["description"]
+            category_name = ticket_data["category"]
+            category = categories[category_name]
+            
+            ticket = Ticket(
+                description=description,
+                category_id=category.id if category else None,
+                created_by=john.id,
+                status='Pending Approval'
+            )
+            db.session.add(ticket)
+            db.session.commit()
+            
+            history = TicketHistory(
+                ticket_id=ticket.id,
+                action='Ticket Created',
+                details=f'Category assigned as: {category.name} (seed data for load balancing demonstration)'
+            )
+            db.session.add(history)
+            db.session.commit()
+            
+            if category and category.approvers:
+                approvers_data = category.approvers.split('|')
+                
+                for level_idx, approver_info in enumerate(approvers_data, start=1):
+                    parts = approver_info.strip().split(':')
+                    approver_email = parts[0].strip()
+                    approver_role = parts[1].strip() if len(parts) > 1 else 'Approver'
+                    approver_name = parts[2].strip() if len(parts) > 2 else ''
+                    
+                    approval = Approval(
+                        ticket_id=ticket.id,
+                        approver_email=approver_email,
+                        approver_name=approver_name,
+                        approver_role=approver_role,
+                        approval_level=level_idx,
+                        status='Approved',
+                        approved_at=datetime.utcnow()
+                    )
+                    db.session.add(approval)
+                
+                db.session.commit()
+                
+                from ticket_assignment import assign_ticket_to_team_member
+                assigned_member = assign_ticket_to_team_member(ticket)
+                
+                if assigned_member:
+                    ticket.assigned_to = assigned_member.id
+                    ticket.status = 'Assigned'
+                    
+                    history = TicketHistory(
+                        ticket_id=ticket.id,
+                        action='Ticket Assigned',
+                        details=f'Assigned to {assigned_member.name}'
+                    )
+                    db.session.add(history)
+                    db.session.commit()
+                    
+                    print(f"Ticket #{ticket.id}: '{description[:50]}...' → {category.name} → Assigned to {assigned_member.name}")
+                else:
+                    print(f"Ticket #{ticket.id}: '{description[:50]}...' → {category.name} → No team member available")
         
         print("\n" + "="*80)
         print("SEED DATA SUMMARY")
@@ -132,6 +225,13 @@ def seed_database():
         print("\nADMIN USER:")
         print("-" * 60)
         print(f"  Email: thbsaitest1@gmail.com{' '*20} Password: admin123")
+        
+        print("\nIT SUPPORT TEAM MEMBERS (can view and work on assigned tickets):")
+        print("-" * 60)
+        for tm_data in team_members_data:
+            print(f"  Email: {tm_data['email']:<40} Password: {tm_data['password']}")
+            print(f"    Name: {tm_data['name']:<40} Category: {tm_data['category']}")
+            print()
         
         print("\nAPPROVERS (receive approval emails):")
         print("-" * 60)
