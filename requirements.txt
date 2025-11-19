@@ -21,3 +21,4 @@ email-validator
 flask-sqlalchemy
 gunicorn
 itsdangerous
+requests

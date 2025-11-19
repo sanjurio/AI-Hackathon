@@ -232,7 +232,8 @@ def view_ticket(ticket_id):
         ai_classified = 'AI' in latest_classification.details or 'OpenAI' in latest_classification.details
     
     test_mode_urls = []
-    email_configured = os.getenv('RESEND_API_KEY')
+    from email_service import get_resend_credentials
+    email_configured = get_resend_credentials() is not None
     if not email_configured and approvals:
         for approval in approvals:
             token = serializer.dumps({'approval_id': approval.id, 'ticket_id': ticket_id}, salt='approval-token')

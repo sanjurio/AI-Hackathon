@@ -1,20 +1,55 @@
 import os
 import resend
+import requests
 from flask import url_for
 
-def get_resend_api_key():
-    """Get Resend API key from Replit connection or environment"""
-    api_key = os.getenv('RESEND_API_KEY')
-    if not api_key:
-        raise ValueError("RESEND_API_KEY not found in environment variables")
-    return api_key
+def get_resend_credentials():
+    """Get Resend credentials from Replit connector"""
+    try:
+        hostname = os.getenv('CONNECTORS_HOSTNAME', 'connectors.replit.com')
+        repl_identity = os.getenv('REPL_IDENTITY')
+        
+        if not repl_identity:
+            raise ValueError("REPL_IDENTITY not found - cannot access Replit connector")
+        
+        x_replit_token = f'repl {repl_identity}'
+        
+        response = requests.get(
+            f'https://{hostname}/api/v2/connection?include_secrets=true&connector_names=resend',
+            headers={
+                'Accept': 'application/json',
+                'X_REPLIT_TOKEN': x_replit_token
+            },
+            timeout=10
+        )
+        
+        if response.status_code != 200:
+            raise ValueError(f"Failed to fetch Resend credentials: {response.status_code}")
+        
+        data = response.json()
+        items = data.get('items', [])
+        
+        if not items or not items[0].get('settings', {}).get('api_key'):
+            raise ValueError("Resend not connected or API key not found")
+        
+        settings = items[0]['settings']
+        return {
+            'api_key': settings['api_key'],
+            'from_email': settings.get('from_email', 'onboarding@resend.dev')
+        }
+    except Exception as e:
+        print(f"✗ Failed to get Resend credentials: {e}")
+        return None
 
 def send_approval_email(ticket_id, description, category_name, creator_name, approval_token, approver_email):
     """Send approval request email via Resend"""
     try:
-        resend.api_key = get_resend_api_key()
+        credentials = get_resend_credentials()
+        if not credentials:
+            raise ValueError("Failed to get Resend credentials")
         
-        from_email = os.getenv('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+        resend.api_key = credentials['api_key']
+        from_email = credentials['from_email']
         
         params = {
             "from": from_email,
@@ -71,9 +106,12 @@ def send_approval_email(ticket_id, description, category_name, creator_name, app
 def send_assignment_email(ticket_id, description, category_name, creator_name, team_member_name, team_member_email):
     """Send ticket assignment email via Resend"""
     try:
-        resend.api_key = get_resend_api_key()
+        credentials = get_resend_credentials()
+        if not credentials:
+            raise ValueError("Failed to get Resend credentials")
         
-        from_email = os.getenv('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+        resend.api_key = credentials['api_key']
+        from_email = credentials['from_email']
         
         params = {
             "from": from_email,
