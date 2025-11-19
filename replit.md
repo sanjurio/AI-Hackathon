@@ -6,6 +6,17 @@ An intelligent ticketing system that automatically classifies and assigns suppor
 
 ## Recent Changes
 
+**November 19, 2025 - Team Member Access & Enhanced Approval System**
+- Added dedicated team member dashboard for IT support staff to view and manage assigned tickets
+- Implemented team member access control - IT support can now view and work on their assigned tickets
+- Added approval comments feature - approvers can add conditions/notes when approving or rejecting (e.g., "only install if it's in the approved software list")
+- Implemented mandatory resolution tracking - team members must provide resolution details when completing tickets
+- Enhanced ticket view to show team member action buttons (Start Working, Mark Completed)
+- Added resolution comment display on completed tickets for full audit trail
+- Approval comments now visible in approval history table
+- Database schema updated to include resolution_comment field in tickets table
+- Improved user flow: Users → Approvers (with comments) → Team Members (with resolution tracking)
+
 **November 19, 2025 - Email Service Migration to Resend**
 - Migrated email service from Flask-Mail to Resend API for reliable transactional emails
 - Updated all dummy @company.com email addresses to real Gmail accounts for testing
