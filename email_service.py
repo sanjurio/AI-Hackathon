@@ -32,6 +32,8 @@ def send_approval_email(ticket_id, description, category_name, creator_name, app
             print(f"✗ Email not configured - skipping email to {approver_email}")
             return False
         
+        print(f"📧 Attempting to send approval email to {approver_email} for ticket #{ticket_id}")
+        
         msg = Message(
             subject=f'Ticket Approval Request - #{ticket_id}',
             recipients=[approver_email]
@@ -77,11 +79,14 @@ def send_approval_email(ticket_id, description, category_name, creator_name, app
         </html>
         """
         
+        print(f"📧 Sending email via {os.getenv('MAIL_SERVER', 'smtp.gmail.com')}:{os.getenv('MAIL_PORT', '587')}")
         mail.send(msg)
-        print(f"✓ Approval email sent to {approver_email}")
+        print(f"✓ Approval email sent successfully to {approver_email}")
         return True
     except Exception as e:
+        import traceback
         print(f"✗ Failed to send approval email to {approver_email}: {e}")
+        print(f"   Error details: {traceback.format_exc()}")
         return False
 
 def send_assignment_email(ticket_id, description, category_name, creator_name, team_member_name, team_member_email):
