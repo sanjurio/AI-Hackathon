@@ -111,6 +111,21 @@
                     <i class="bi bi-info-circle"></i> This ticket requires sequential approval from multiple levels. Each level must approve before the next level is notified.
                 </div>
                 
+                {% if current_user_approval %}
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-person-check"></i> Your Approval Required</h6>
+                    <p class="mb-2">You are assigned as <strong>{{ current_user_approval.approver_role }}</strong> at Level {{ current_user_approval.approval_level }}. Please review and take action:</p>
+                    <div>
+                        <a href="{{ url_for('approve_ticket', token=approval_token, action='approve') }}" class="btn btn-success me-2">
+                            <i class="bi bi-check-circle"></i> Approve Ticket
+                        </a>
+                        <a href="{{ url_for('approve_ticket', token=approval_token, action='reject') }}" class="btn btn-danger">
+                            <i class="bi bi-x-circle"></i> Reject Ticket
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+                
                 {% if test_mode_urls %}
                 <div class="alert alert-warning">
                     <h6><i class="bi bi-wrench"></i> Test Mode - Approval URLs</h6>

@@ -195,7 +195,7 @@ def create_ticket():
             for approver_email, approver_role, approver_name, approval, idx in approval_ids:
                 if idx == 1:
                     token = serializer.dumps({'approval_id': approval.id, 'ticket_id': ticket_id}, salt='approval-token')
-                    send_approval_email(
+                    email_sent = send_approval_email(
                         ticket_id=ticket_id,
                         description=description,
                         category_name=category_name,
@@ -203,6 +203,10 @@ def create_ticket():
                         approval_token=token,
                         approver_email=approver_email
                     )
+                    if email_sent:
+                        print(f"✓ Approval email sent to {approver_email} for ticket #{ticket_id}")
+                    else:
+                        print(f"✗ Failed to send approval email to {approver_email} for ticket #{ticket_id}")
         
         flash('Ticket created successfully! Waiting for approval.', 'success')
         return redirect(url_for('user_dashboard'))
@@ -214,12 +218,14 @@ def create_ticket():
 def view_ticket(ticket_id):
     ticket = Ticket.query.get_or_404(ticket_id)
     
-    if not current_user.is_admin and ticket.created_by != current_user.id:
-        flash('You do not have permission to view this ticket.', 'danger')
-        return redirect(url_for('user_dashboard'))
-    
     history = TicketHistory.query.filter_by(ticket_id=ticket_id).order_by(TicketHistory.timestamp.desc()).all()
     approvals = Approval.query.filter_by(ticket_id=ticket_id).order_by(Approval.approval_level).all()
+    
+    is_approver = any(a.approver_email == current_user.email for a in approvals)
+    
+    if not current_user.is_admin and ticket.created_by != current_user.id and not is_approver:
+        flash('You do not have permission to view this ticket.', 'danger')
+        return redirect(url_for('user_dashboard'))
     
     can_edit = (ticket.created_by == current_user.id and 
                 ticket.status == 'Pending Approval' and 
@@ -244,13 +250,20 @@ def view_ticket(ticket_id):
                 'reject_url': url_for('approve_ticket', token=token, action='reject', _external=True)
             })
     
+    current_user_approval = next((a for a in approvals if a.approver_email == current_user.email and a.status == 'Pending'), None)
+    approval_token = None
+    if current_user_approval:
+        approval_token = serializer.dumps({'approval_id': current_user_approval.id, 'ticket_id': ticket_id}, salt='approval-token')
+    
     return render_template('view_ticket.html', 
                          ticket=ticket, 
                          history=history, 
                          approvals=approvals, 
                          can_edit=can_edit,
                          ai_classified=ai_classified,
-                         test_mode_urls=test_mode_urls)
+                         test_mode_urls=test_mode_urls,
+                         current_user_approval=current_user_approval,
+                         approval_token=approval_token)
 
 @app.route('/user/ticket/<int:ticket_id>/edit', methods=['GET', 'POST'])
 @login_required
