@@ -7,7 +7,7 @@ from datetime import datetime
 from models import db, User, Ticket, Category, TeamMember, Approval, TicketHistory
 from ai_classifier import classify_ticket
 from ticket_assignment import assign_ticket_to_team_member
-from email_service import mail, send_approval_email, send_assignment_email
+from email_service import send_approval_email, send_assignment_email
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -36,15 +36,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     }
 }
 
-app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
-app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True') == 'True'
-app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME', '')
-app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD', '')
-app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@ticketing.com')
-
 db.init_app(app)
-mail.init_app(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -53,6 +45,22 @@ login_manager.login_view = 'login'
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+def auto_initialize_database():
+    """Automatically initialize and seed database if empty"""
+    with app.app_context():
+        try:
+            db.create_all()
+            
+            if User.query.count() == 0:
+                print("Database is empty. Auto-seeding...")
+                from seed_data import seed_database
+                seed_database()
+                print("Database seeded successfully!")
+        except Exception as e:
+            print(f"Auto-initialization error: {e}")
+
+auto_initialize_database()
 
 @app.route('/')
 def index():
@@ -224,7 +232,7 @@ def view_ticket(ticket_id):
         ai_classified = 'AI' in latest_classification.details or 'OpenAI' in latest_classification.details
     
     test_mode_urls = []
-    email_configured = os.getenv('MAIL_USERNAME')
+    email_configured = os.getenv('RESEND_API_KEY')
     if not email_configured and approvals:
         for approval in approvals:
             token = serializer.dumps({'approval_id': approval.id, 'ticket_id': ticket_id}, salt='approval-token')

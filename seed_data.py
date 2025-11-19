@@ -20,10 +20,10 @@ def seed_database():
         print("Creating users...")
         
         users_data = [
-            {'name': 'Admin User', 'email': 'admin@company.com', 'password': 'admin123', 'is_admin': True},
-            {'name': 'John Employee', 'email': 'john.employee@company.com', 'password': 'password123', 'is_admin': False},
-            {'name': 'Sarah Employee', 'email': 'sarah.employee@company.com', 'password': 'password123', 'is_admin': False},
-            {'name': 'Mike Employee', 'email': 'mike.employee@company.com', 'password': 'password123', 'is_admin': False},
+            {'name': 'Admin User', 'email': 'thbsaitest1@gmail.com', 'password': 'admin123', 'is_admin': True},
+            {'name': 'John Employee', 'email': 'thbsaitest2@gmail.com', 'password': 'password123', 'is_admin': False},
+            {'name': 'Sarah Employee', 'email': 'thbsaitest3@gmail.com', 'password': 'password123', 'is_admin': False},
+            {'name': 'Mike Employee', 'email': 'thbsaitest5@gmail.com', 'password': 'password123', 'is_admin': False},
         ]
         
         users = {}
@@ -48,31 +48,31 @@ def seed_database():
                 'name': 'Software Installation',
                 'description': 'Software installation and licensing requests',
                 'keywords': 'install, software, application, program, license, teams, zoom, office, adobe',
-                'approvers': 'team.lead@company.com:Team Lead:Robert Johnson | it.manager@company.com:IT Manager:Emily Davis | it.director@company.com:IT Director:Michael Chen'
+                'approvers': 'thbsaitest3@gmail.com:Team Lead:Sarah Employee | thbsaitest5@gmail.com:IT Manager:Mike Employee'
             },
             {
                 'name': 'Timesheet Modification',
                 'description': 'Timesheet corrections and modifications',
                 'keywords': 'timesheet, hours, attendance, time, correction, modify, adjust',
-                'approvers': 'supervisor@company.com:Supervisor:Lisa Anderson | hr.manager@company.com:HR Manager:David Wilson | hr.director@company.com:HR Director:Jennifer Martinez'
+                'approvers': 'thbsaitest6@gmail.com:Supervisor:Support Team | thbsaitest3@gmail.com:HR Manager:Sarah Employee'
             },
             {
                 'name': 'Hardware Request',
                 'description': 'Hardware equipment requests (laptops, monitors, etc.)',
                 'keywords': 'laptop, desktop, monitor, keyboard, mouse, hardware, equipment, device',
-                'approvers': 'team.lead@company.com:Team Lead:Robert Johnson | procurement.manager@company.com:Procurement Manager:Amanda Taylor | finance.director@company.com:Finance Director:James Brown | cfo@company.com:CFO:Patricia White'
+                'approvers': 'thbsaitest5@gmail.com:Team Lead:Mike Employee | thbsaitest6@gmail.com:Procurement Manager:Support Team'
             },
             {
                 'name': 'Access Request',
                 'description': 'System and application access requests',
                 'keywords': 'access, permission, credentials, login, account, rights, privileges',
-                'approvers': 'team.lead@company.com:Team Lead:Robert Johnson | security.manager@company.com:Security Manager:Christopher Lee | it.director@company.com:IT Director:Michael Chen'
+                'approvers': 'thbsaitest3@gmail.com:Team Lead:Sarah Employee | thbsaitest5@gmail.com:Security Manager:Mike Employee'
             },
             {
                 'name': 'Travel Authorization',
                 'description': 'Business travel and expense requests',
                 'keywords': 'travel, trip, flight, hotel, expense, reimbursement, conference',
-                'approvers': 'supervisor@company.com:Supervisor:Lisa Anderson | department.manager@company.com:Department Manager:Karen Rodriguez | finance.director@company.com:Finance Director:James Brown'
+                'approvers': 'thbsaitest6@gmail.com:Supervisor:Support Team | thbsaitest3@gmail.com:Manager:Sarah Employee'
             }
         ]
         
@@ -102,11 +102,11 @@ def seed_database():
         print("\nCreating team members...")
         
         team_members_data = [
-            {'name': 'Alex Tech', 'email': 'alex.tech@company.com', 'category': 'Software Installation'},
-            {'name': 'Bob Support', 'email': 'bob.support@company.com', 'category': 'Software Installation'},
-            {'name': 'Carol HR', 'email': 'carol.hr@company.com', 'category': 'Timesheet Modification'},
-            {'name': 'Dan IT', 'email': 'dan.it@company.com', 'category': 'Hardware Request'},
-            {'name': 'Eve Security', 'email': 'eve.security@company.com', 'category': 'Access Request'},
+            {'name': 'Tech Support', 'email': 'thbsaitest6@gmail.com', 'category': 'Software Installation'},
+            {'name': 'HR Support', 'email': 'thbsaitest6@gmail.com', 'category': 'Timesheet Modification'},
+            {'name': 'IT Support', 'email': 'thbsaitest6@gmail.com', 'category': 'Hardware Request'},
+            {'name': 'Security Support', 'email': 'thbsaitest6@gmail.com', 'category': 'Access Request'},
+            {'name': 'Travel Support', 'email': 'thbsaitest6@gmail.com', 'category': 'Travel Authorization'},
         ]
         
         for tm_data in team_members_data:
@@ -131,7 +131,7 @@ def seed_database():
         
         print("\nADMIN USER:")
         print("-" * 60)
-        print(f"  Email: admin@company.com{' '*25} Password: admin123")
+        print(f"  Email: thbsaitest1@gmail.com{' '*20} Password: admin123")
         
         print("\nAPPROVERS (receive approval emails):")
         print("-" * 60)
@@ -161,14 +161,13 @@ def seed_database():
         print("\n" + "="*80)
         print("HOW TO TEST:")
         print("="*80)
-        print("1. Login as: john.employee@company.com / password123")
+        print("1. Login as: thbsaitest2@gmail.com / password123")
         print("2. Create a ticket (e.g., 'I need Microsoft Office installed on my laptop')")
         print("3. The ticket will be auto-classified to 'Software Installation'")
-        print("4. Check approval emails - ONLY Level 1 (Team Lead) gets notified first")
-        print("5. When Level 1 approves, Level 2 (IT Manager) gets notified")
-        print("6. When Level 2 approves, Level 3 (IT Director) gets notified")
-        print("7. After ALL levels approve, the ticket is auto-assigned to a team member")
-        print("8. You can EDIT or CANCEL the ticket ONLY before any approvals happen")
+        print("4. Check approval emails - ONLY Level 1 approver gets notified first")
+        print("5. When Level 1 approves, Level 2 gets notified")
+        print("6. After ALL levels approve, the ticket is auto-assigned to a team member")
+        print("7. You can EDIT or CANCEL the ticket ONLY before any approvals happen")
         print("="*80 + "\n")
 
 if __name__ == '__main__':
